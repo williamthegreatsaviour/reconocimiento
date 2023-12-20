@@ -1,0 +1,72 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_ml_vision/firebase_ml_vision.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Reconocimiento Facial',
+      home: MyHomePage(),
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FaceDetector _faceDetector = FirebaseVision.instance.faceDetector();
+
+  void _signInAnonymously() async {
+    await _auth.signInAnonymously();
+  }
+
+  Future<void> _detectFaces(String imagePath) async {
+    final FirebaseVisionImage visionImage = FirebaseVisionImage.fromFilePath(imagePath);
+    final List<Face> faces = await _faceDetector.processImage(visionImage);
+
+    if (faces.isNotEmpty) {
+      //  lógica del reconocimiento facial
+      //  ejemplo, comparar con datos en Firebase.
+    } else {
+      print('No se detectaron rostros.');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _signInAnonymously();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Reconocimiento Facial'),
+      ),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () {
+            // Deteccion de rostros con imagen.
+            _detectFaces('ruta_de_la_imagen.jpg');
+          },
+          child: Text('Detectar Rostros'),
+        ),
+      ),
+    );
+  }
+}
