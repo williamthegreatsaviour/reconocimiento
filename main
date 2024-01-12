@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_ml_vision/firebase_ml_vision.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+import 'package:face_recognition/face_recognition.dart';
+
+void main() {
   runApp(MyApp());
 }
 
@@ -14,59 +10,89 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Reconocimiento Facial',
-      home: MyHomePage(),
+      title: 'Reconocimiento facial',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: CameraPage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class CameraPage extends StatefulWidget {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _CameraPageState createState() => _CameraPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FaceDetector _faceDetector = FirebaseVision.instance.faceDetector();
-
-  void _signInAnonymously() async {
-    await _auth.signInAnonymously();
-  }
-
-  Future<void> _detectFaces(String imagePath) async {
-    final FirebaseVisionImage visionImage = FirebaseVisionImage.fromFilePath(imagePath);
-    final List<Face> faces = await _faceDetector.processImage(visionImage);
-
-    if (faces.isNotEmpty) {
-      //  lógica del reconocimiento facial
-      //  ejemplo, comparar con datos en Firebase.
-    } else {
-      print('No se detectaron rostros.');
-    }
-  }
+class _CameraPageState extends State<CameraPage> {
+  late CameraController _cameraController;
+  late FaceRecognizer _faceRecognizer;
 
   @override
   void initState() {
     super.initState();
-    _signInAnonymously();
+
+    _cameraController = CameraController(
+      CameraDescription.defaultCamera(),
+      ResolutionPreset.high,
+    );
+    _cameraController.initialize().then((_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {});
+    });
+
+    _faceRecognizer = FaceRecognizer(
+      FaceDetectorOptions(
+        enableClassification: true,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _cameraController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_cameraController.isAvailable) {
+      return Center(
+        child: Text('La cámara no está disponible'),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Reconocimiento Facial'),
+      body: Stack(
+        children: [
+          _cameraPreview(),
+          _faceDetectionOverlay(),
+        ],
       ),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            // Deteccion de rostros con imagen.
-            _detectFaces('ruta_de_la_imagen.jpg');
-          },
-          child: Text('Detectar Rostros'),
-        ),
-      ),
+    );
+  }
+
+  Widget _cameraPreview() {
+    return SizedBox(
+      width: MediaQuery.of(context).size.width,
+      height: MediaQuery.of(context).size.height,
+      child: CameraPreview(_cameraController),
+    );
+  }
+
+  Widget _faceDetectionOverlay() {
+    return GestureDetector(
+      onTap: () {
+        _faceRecognizer.processImage(_cameraController.frame).then((faces) {
+          if (faces.length > 0) {
+            print(faces[0].boundingBox);
+          }
+        });
+      },
+      child: Container(),
     );
   }
 }
